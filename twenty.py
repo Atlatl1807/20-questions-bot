@@ -297,17 +297,22 @@ async def start(interaction: discord.Interaction):
     await view.wait()
     if view.value == "Yes":
         await interaction.channel.send("Great!")
-        for question in json_data['data'][guessedobject]['questions']:
-            if question in answeredQuestions:
+        for question in answeredQuestions:
+            if question in json_data['data'][guessedobject]['questions']:
                 if not 'times' in json_data['data'][guessedobject]['questions'][question].keys():
                     json_data['data'][guessedobject]['questions'][question]['times'] = {}
                     json_data['data'][guessedobject]['questions'][question]['times'] = 0
                 hardtimes = json_data['data'][guessedobject]['questions'][question]['times'] + 1
                 json_data['data'][guessedobject]['questions'][question]['times'] = hardtimes
-                if not 'times' in json_data['data'][guessedobject]['questions'][question].keys():
+                if not 'prob' in json_data['data'][guessedobject]['questions'][question].keys():
                     json_data['data'][guessedobject]['questions'][question]['prob'] = {}
                     json_data['data'][guessedobject]['questions'][question]['prob'] = 0
                 json_data['data'][guessedobject]['questions'][question]['prob'] += ((answeredQuestions[question] / hardtimes) * 0.5)
+            else:
+                #add that question
+                json_data['data'][guessedobject]['questions'][question] = {}
+                json_data['data'][guessedobject]['questions'][question]['times'] = 1
+                json_data['data'][guessedobject]['questions'][question]['prob'] = answeredQuestions[question] * 0.5
     elif view.value == "No":
         await interaction.channel.send("What was your answer?")
         def check(m):
@@ -385,6 +390,9 @@ async def database(interaction: discord.Interaction):
         else:
             await message.edit(embed=embed, view=view)
         await view.wait()
+        #we timed out
+        if not hasattr(view, 'value'):
+            return
         if view.value == "Left":
             if iterator <= 0:
                 iterator = maxiterator
@@ -463,6 +471,7 @@ async def add_object(interaction: discord.Interaction):
     msg = await bot.wait_for('message', check=check)
     newquestion = msg.content
     await interaction.channel.send("Is the answer yes or no?")
+    #TODO make this the button system
     def check(m):
         return m.channel == interaction.channel and m.author == interaction.user
     msg = await bot.wait_for('message', check=check)
@@ -470,11 +479,10 @@ async def add_object(interaction: discord.Interaction):
         newprob = 0.5
     elif "no" in msg.content.lower():
         newprob = -0.5
-    if not 'questions' in json_data['data'][newobject].keys():
-        json_data['data'][newobject] = {}
-    if not len(json_data['data'][newobject]['questions'].keys()) > 0:
-        json_data['data'][newobject]['questions'] = {}
+    json_data['data'][newobject] = {}
+    json_data['data'][newobject]['questions'] = {}
     json_data['data'][newobject]['questions'][newquestion] = {}
+    json_data['data'][newobject]['questions'][newquestion]['times'] = 1
     json_data['data'][newobject]['questions'][newquestion]['prob'] = newprob
     
     with open(filepath, "w+") as file:
